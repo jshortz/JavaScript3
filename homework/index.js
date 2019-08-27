@@ -44,15 +44,18 @@
 
   }
 
-  function getRepoDataFromOrgAndAddToDOM() {
+  async function getRepoDataFromOrgAndAddToDOM() {
     const REPOS_URL = 'https://api.github.com/orgs/foocoding/repos?per_page=100';
-    fetchJSON(REPOS_URL).then(function (response) {
+    try {
+      let response = await fetchJSON(REPOS_URL);
       response.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1);
       response.forEach(repoDataObj => {
-        createAndAppend('option', document.getElementById('repo-select'), { text: repoDataObj.name })
+        createAndAppend('option', document.getElementById('repo-select'), { text: repoDataObj.name });
       })
       addListenerOnSelect(response);
-    })
+    } catch (error) {
+      root.innerHTML = error.message;
+    }
   }
 
   function addDataToRepoDetails(data) {
@@ -64,16 +67,19 @@
     createAndAppend('div', repoDetailsDiv, { text: `Number of Forks: ${data.forks}` });
   }
 
-  function getContributors(data) {
+  async function getContributors(data) {
     const contributorsDiv = document.getElementById('contributors');
     contributorsDiv.innerHTML = 'Contributors:';
-    fetchJSON(data.contributors_url).then(function (response) {
+    try {
+      let response = await fetchJSON(data.contributors_url);
       response.forEach(repoObj => {
         let key = repoObj.login;
         createAndAppend('div', contributorsDiv, { id: key });
         createAndAppend('a', document.getElementById(key), { href: repoObj.html_url, target: "_blank", text: key });
       })
-    })
+    } catch (error) {
+      root.innerHTML = error.message;
+    }
   }
 
   function addListenerOnSelect(arrayOfRepoData) {
@@ -84,8 +90,6 @@
       getContributors(selectedData);
     })
   }
-
-
 
   function main() {
     createLayout();
