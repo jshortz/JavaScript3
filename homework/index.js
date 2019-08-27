@@ -1,19 +1,23 @@
 'use strict';
 
 {
-  function fetchJSON(url, cb) {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url);
-    xhr.responseType = 'json';
-    xhr.onload = () => {
-      if (xhr.status < 400) {
-        cb(null, xhr.response);
-      } else {
-        cb(new Error(`Network error: ${xhr.status} - ${xhr.statusText}`));
+  function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+      let xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.responseType = 'json';
+      xhr.onload = function () {
+        if (xhr.status < 400) {
+          resolve(xhr.response);
+        } else {
+          reject(Error(xhr.status));
+        }
+      };
+      xhr.onerror = () => {
+        reject(Error('Network request failed'));
       }
-    };
-    xhr.onerror = () => cb(new Error('Network request failed'));
-    xhr.send();
+      xhr.send();  
+    });
   }
 
   function createAndAppend(name, parent, options = {}) {
@@ -42,16 +46,12 @@
 
   function getRepoDataFromOrgAndAddToDOM() {
     const REPOS_URL = 'https://api.github.com/orgs/foocoding/repos?per_page=100';
-    fetchJSON(REPOS_URL, (err, arrayOfRepoData) => {
-      if (err) {
-        alert(err.message);
-      } else {
-        arrayOfRepoData.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1);
-        arrayOfRepoData.forEach(repoDataObj => {
-          createAndAppend('option', document.getElementById('repo-select'), { text: repoDataObj.name })
-        })
-        addListenerOnSelect(arrayOfRepoData);
-      }
+    fetchJSON(REPOS_URL).then(function (response) {
+      response.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1);
+      response.forEach(repoDataObj => {
+        createAndAppend('option', document.getElementById('repo-select'), { text: repoDataObj.name })
+      })
+      addListenerOnSelect(response);
     })
   }
 
@@ -67,16 +67,12 @@
   function getContributors(data) {
     const contributorsDiv = document.getElementById('contributors');
     contributorsDiv.innerHTML = 'Contributors:';
-    fetchJSON(data.contributors_url, (err, arrayOfContributorData) => {
-      if (err) {
-        alert(err.message);
-      } else {
-        arrayOfContributorData.forEach(repoObj => {
-          let key = repoObj.login;
-          createAndAppend('div', contributorsDiv, { id: key });
-          createAndAppend('a', document.getElementById(key), { href: repoObj.html_url, target: "_blank", text: key });
-        });
-      }
+    fetchJSON(data.contributors_url).then(function (response) {
+      response.forEach(repoObj => {
+        let key = repoObj.login;
+        createAndAppend('div', contributorsDiv, { id: key });
+        createAndAppend('a', document.getElementById(key), { href: repoObj.html_url, target: "_blank", text: key });
+      })
     })
   }
 
