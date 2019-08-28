@@ -12,18 +12,20 @@ class App {
    * @param {string} url The GitHub URL for obtaining the organization's repositories.
    */
   async initialize(url) {
+    createLayout();
     // Add code here to initialize your app
     // 1. Create the fixed HTML elements of your page
     // 2. Make an initial XMLHttpRequest using Util.fetchJSON() to populate your <select> element
 
     const root = document.getElementById('root');
 
-    Util.createAndAppend('h1', root, { text: 'It works!' }); // TODO: replace with your own code
-
     try {
       const repos = await Util.fetchJSON(url);
-      this.repos = repos.map(repo => new Repository(repo));
-      // TODO: add your own code here
+      let arrayOfRepos = this.repos = repos.map(repo => new Repository(repo));
+      console.log(arrayOfRepos[0].keys);
+      for (let i = 0; i < arrayOfRepos.length; i++) {
+        console.log(arrayOfRepos[i].name);
+      }
     } catch (error) {
       this.renderError(error);
     }
@@ -76,6 +78,16 @@ class App {
   }
 }
 
-const HYF_REPOS_URL = 'https://api.github.com/orgs/HackYourFuture/repos?per_page=100';
+function createLayout() {
+  const root = document.getElementById('root');
+  Util.createAndAppend('select', root, { id: 'repo-select' });
+  Util.createAndAppend('option', document.getElementById('repo-select'), { text: 'Choose a Repository' });
+  Util.createAndAppend('div', root, { id: 'body-container' });
+  Util.createAndAppend('div', document.getElementById('body-container'), { id: 'repo-details' });
+  Util.createAndAppend('div', document.getElementById('body-container'), { id: 'contributors' });
+
+}
+
+const HYF_REPOS_URL = 'https://api.github.com/orgs/FooCoding/repos?per_page=100';
 
 window.onload = () => new App(HYF_REPOS_URL);
