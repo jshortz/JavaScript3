@@ -1,19 +1,23 @@
 'use strict';
 
 {
-  function fetchJSON(url, cb) {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url);
-    xhr.responseType = 'json';
-    xhr.onload = () => {
-      if (xhr.status < 400) {
-        cb(null, xhr.response);
-      } else {
-        cb(new Error(`Network error: ${xhr.status} - ${xhr.statusText}`));
+  function fetchJSON(url) {
+    return new Promise((resolve, reject) => {
+      let xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.responseType = 'json';
+      xhr.onload = function () {
+        if (xhr.status < 400) {
+          resolve(xhr.response);
+        } else {
+          reject(Error(xhr.status));
+        }
+      };
+      xhr.onerror = () => {
+        reject(Error('Network request failed'));
       }
-    };
-    xhr.onerror = () => cb(new Error('Network request failed'));
-    xhr.send();
+      xhr.send();  
+    });
   }
 
   function createAndAppend(name, parent, options = {}) {
@@ -30,18 +34,63 @@
     return elem;
   }
 
-  function main(url) {
-    fetchJSON(url, (err, data) => {
-      const root = document.getElementById('root');
-      if (err) {
-        createAndAppend('div', root, { text: err.message, class: 'alert-error' });
-      } else {
-        createAndAppend('pre', root, { text: JSON.stringify(data, null, 2) });
-      }
-    });
+  function createLayout() {
+    const root = document.getElementById('root');
+    createAndAppend('select', root, { id: 'repo-select' });
+    createAndAppend('option', document.getElementById('repo-select'), { text: 'Choose a Repository' });
+    createAndAppend('div', root, { id: 'body-container' });
+    createAndAppend('div', document.getElementById('body-container'), { id: 'repo-details' });
+    createAndAppend('div', document.getElementById('body-container'), { id: 'contributors' });
+
   }
 
-  const HYF_REPOS_URL = 'https://api.github.com/orgs/HackYourFuture/repos?per_page=100';
+  function getRepoDataFromOrgAndAddToDOM() {
+    const REPOS_URL = 'https://api.github.com/orgs/foocoding/repos?per_page=100';
+    fetchJSON(REPOS_URL).then(function (response) {
+      response.sort((a, b) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : -1);
+      response.forEach(repoDataObj => {
+        createAndAppend('option', document.getElementById('repo-select'), { text: repoDataObj.name })
+      })
+      addListenerOnSelect(response);
+    })
+  }
 
-  window.onload = () => main(HYF_REPOS_URL);
+  function addDataToRepoDetails(data) {
+    const repoDetailsDiv = document.getElementById('repo-details');
+    repoDetailsDiv.innerHTML = '';
+    createAndAppend('div', repoDetailsDiv, { id: "repoNameID" });
+    createAndAppend('a', document.getElementById("repoNameID"), { href: data.html_url, target: "_blank", text: data.name })
+    createAndAppend('div', repoDetailsDiv, { text: `Repository Description: ${data.description}` });
+    createAndAppend('div', repoDetailsDiv, { text: `Number of Forks: ${data.forks}` });
+  }
+
+  function getContributors(data) {
+    const contributorsDiv = document.getElementById('contributors');
+    contributorsDiv.innerHTML = 'Contributors:';
+    fetchJSON(data.contributors_url).then(function (response) {
+      response.forEach(repoObj => {
+        let key = repoObj.login;
+        createAndAppend('div', contributorsDiv, { id: key });
+        createAndAppend('a', document.getElementById(key), { href: repoObj.html_url, target: "_blank", text: key });
+      })
+    })
+  }
+
+  function addListenerOnSelect(arrayOfRepoData) {
+    document.getElementById('repo-select').addEventListener('change', event => {
+      const selectedRepo = event.target.value;
+      const selectedData = arrayOfRepoData.filter(repoData => repoData.name === selectedRepo)[0];
+      addDataToRepoDetails(selectedData);
+      getContributors(selectedData);
+    })
+  }
+
+
+
+  function main() {
+    createLayout();
+    getRepoDataFromOrgAndAddToDOM();
+  }
+
+  window.onload = () => main();
 }
